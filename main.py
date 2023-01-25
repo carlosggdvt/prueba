@@ -73,8 +73,8 @@ def http():
             json_object, table_ref, job_config=job_config)
         return job.result()  # Waits for table load to complete.
     
-    request_json = request.json()
-    query = 'SELECT * FROM `nozamagreen.invoice_parser_results.view_query` WHERE ID ="{}"'.format(request_json["ID"])
+  
+    query = 'SELECT * FROM `nozamagreen.invoice_parser_results.view_query` WHERE ID ="{}"'.format(request.json["ID"])
     #print(query)
     query_job = bq_client.query(query)
     results = query_job.result()
@@ -133,7 +133,7 @@ def http():
     result['redFlag']=str(int(redFlag))
     write_to_bq_score(dataset_name, scoring_table_name,result_json)
 
-    return result
+    return jsonify(result)
 
 
 if __name__ == "__main__":
