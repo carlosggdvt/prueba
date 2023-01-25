@@ -118,9 +118,9 @@ def http():
     or query_dict["line_item_quantity"] is None:
         redFlag=True
 
-    features=["invoice_id","invoice_date","supplier_name","supplier_address","plastiks_type","line_item_quantity","supplier_tax_id","receiver_tax_id",
+    features=["invoice_id","invoice_date","supplier_name","supplier_address","line_item_quantity","supplier_tax_id","receiver_tax_id",
     "receiver_name","ship_to_address","supplier_iban"]
-    scoring=[10,10,10,10,10,10,10,10,5,10,5]
+    scoring=[10,10,10,10,10,10,10,5,10,5]
 
     df=pd.DataFrame({'features':features,'scoring':scoring})
 
