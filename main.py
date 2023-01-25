@@ -109,7 +109,7 @@ def http():
         query_dict["ship_to_address"]=row[23]
         query_dict["supplier_iban"]=row[24]
         query_dict["remit_to_adress"]=row[26]
-        query_dict["plastiks_type"]=row[27]
+        #query_dict["plastiks_type"]=row[27]
     
     if query_dict["invoice_id"] is None \
     or query_dict["invoice_date"] is None \
