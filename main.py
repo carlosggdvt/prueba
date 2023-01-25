@@ -26,7 +26,7 @@ from flask import Flask, request,jsonify
 app = Flask(__name__)
 
 
-@app.route("/")
+@app.route("/",methods=['POST'])
 def http():
     pub_client = pubsub_v1.PublisherClient()
     bq_client = bigquery.Client()
