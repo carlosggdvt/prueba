@@ -8,6 +8,6 @@ xlrd
 xlsxwriter
 pandas_gbq
 openpyxl
-requests
+request
 urllib3
 googlemaps==4.7.3
