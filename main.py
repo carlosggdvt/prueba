@@ -74,7 +74,7 @@ def http():
         return job.result()  # Waits for table load to complete.
     
   
-    query = 'SELECT * FROM `nozamagreen.invoice_parser_results.view_query` WHERE ID ="{}"'.format(request.json["ID"])
+    query = 'SELECT * FROM `carlos-gomez-sandbox-01.invoice_parser_results.view_query` WHERE ID ="{}"'.format(request.json["ID"])
     #print(query)
     query_job = bq_client.query(query)
     results = query_job.result()
