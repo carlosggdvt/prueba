@@ -20,8 +20,7 @@ import pandas as pd
 import json
 import os
 import datetime
-from flask import Flask
-import request
+from flask import Flask, request,jsonify
 
 
 app = Flask(__name__)
