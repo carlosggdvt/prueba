@@ -14,17 +14,127 @@
 
 # [START cloudrun_helloworld_service]
 # [START run_helloworld_service]
+from google.cloud import bigquery
+from google.cloud import pubsub_v1
+import pandas as pd
+import json
 import os
-
+import datetime
 from flask import Flask
+import request
+
 
 app = Flask(__name__)
 
 
 @app.route("/")
-def hello_world():
-    name = os.environ.get("NAME", "World")
-    return "Hello {}!".format(name)
+def http():
+    pub_client = pubsub_v1.PublisherClient()
+    bq_client = bigquery.Client()
+    #PROJECT_ID = os.environ.get("GCP_PROJECT")
+    #geocode_request_topicname = os.environ.get("GEOCODE_REQUEST_TOPICNAME")
+    dataset_name = 'invoice_parser_results'
+    scoring_table_name='score'
+    # Every call to publish() returns an instance of Future
+    geocode_futures = []
+
+    # Setting variables
+    address_fields = [
+        "receiver_address",
+        "remit_to_address",
+        "ship_from_address",
+        "ship_to_address",
+        "supplier_address",
+    ]
+    def write_to_bq_score(dataset_name, table_name, score_dict):
+        """
+        Write Data to BigQuery
+        """
+        dataset_ref = bq_client.dataset(dataset_name)
+        table_ref = dataset_ref.table(table_name)
+
+        json_score=[score_dict]
+
+        json_data = json.dumps(json_score, sort_keys=False,default=str)
+        # Convert to a JSON Object
+        json_object = json.loads(json_data)
+
+
+        schema_update_options = [bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION,
+                                bigquery.SchemaUpdateOption.ALLOW_FIELD_RELAXATION]
+        source_format = bigquery.SourceFormat.NEWLINE_DELIMITED_JSON
+
+        job_config = bigquery.LoadJobConfig(
+            schema=[bigquery.SchemaField('ID', 'STRING', 'NULLABLE'),bigquery.SchemaField('timestamp', 'TIMESTAMP', 'NULLABLE'),bigquery.SchemaField('redFlag', 'BOOLEAN', 'NULLABLE'),bigquery.SchemaField('score', 'INTEGER', 'NULLABLE')],
+            schema_update_options=schema_update_options,
+            source_format=source_format
+        )
+
+        job = bq_client.load_table_from_json(
+            json_object, table_ref, job_config=job_config)
+        return job.result()  # Waits for table load to complete.
+    
+    request_json = request.json()
+    query = 'SELECT * FROM `nozamagreen.invoice_parser_results.view_query` WHERE ID ="{}"'.format(request_json["ID"])
+    #print(query)
+    query_job = bq_client.query(query)
+    results = query_job.result()
+    query_dict=dict()
+    result=dict()
+    score=0
+    redFlag=False
+    for row in results:
+        query_dict["ID"]=row[0]
+        query_dict["receiver_name"]=row[1]
+        query_dict["receiver_address"]=row[2]
+        query_dict["receiver_email"]=row[3]
+        query_dict["receiver_phone"]=row[4]
+        query_dict["receiver_tax_id"]=row[5]
+        query_dict["supplier_name"]=row[6]
+        query_dict["supplier_address"]=row[7]
+        query_dict["supplier_email"]=row[8]
+        query_dict["supplier_phone"]=row[9]
+        query_dict["supplier_tax_id"]=row[10]
+        query_dict["invoice_date"]=row[11]
+        query_dict["invoice_id"]=row[12]
+        query_dict["line_item"]=row[13]
+        query_dict["line_item_description"]=row[14]
+        query_dict["line_item_quantity"]=row[15]
+        query_dict["line_item_product_code"]=row[16]
+        query_dict["line_item_unit"]=row[17]
+        query_dict["line_item_unit_price"]=row[18]
+        query_dict["total_amount"]=row[19]
+        query_dict["total_tax_amount"]=row[20]
+        query_dict["ship_from_name"]=row[21]
+        query_dict["ship_to_name"]=row[22]
+        query_dict["ship_to_address"]=row[23]
+        query_dict["supplier_iban"]=row[24]
+        query_dict["remit_to_adress"]=row[26]
+        query_dict["plastiks_type"]=row[27]
+    
+    if query_dict["invoice_id"] is None \
+    or query_dict["invoice_date"] is None \
+    or query_dict["supplier_name"] is None \
+    or query_dict["supplier_address"] is None \
+    or query_dict["line_item_quantity"] is None:
+        redFlag=True
+
+    features=["invoice_id","invoice_date","supplier_name","supplier_address","plastiks_type","line_item_quantity","supplier_tax_id","receiver_tax_id",
+    "receiver_name","ship_to_address","supplier_iban"]
+    scoring=[10,10,10,10,10,10,10,10,5,10,5]
+
+    df=pd.DataFrame({'features':features,'scoring':scoring})
+
+    for i in range(df.shape[0]):
+        if query_dict[df.iloc[i,0]] is not None:
+            score +=df.iloc[i,1]
+
+    result_json={'ID':str(query_dict["ID"]),'timestamp':datetime.datetime.now(),'redFlag':redFlag,'score':score}
+    result['score']=str(score)
+    result['redFlag']=str(int(redFlag))
+    write_to_bq_score(dataset_name, scoring_table_name,result_json)
+
+    return result
 
 
 if __name__ == "__main__":
